@@ -87,7 +87,7 @@ def list_blobs3(bc):
     """Lists all the blobs in the bucket."""
 
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs('paramountpoc-exportjson', prefix = 'poc-testjsons')
+    blobs = storage_client.list_blobs('poc-exportjson', prefix = 'poc-testjsons')
     json_paths = []
     for blob in blobs:
       #json_paths.append(f"gs://{bucket_name}/{blob.name}")
@@ -131,7 +131,7 @@ class list_blobs2(beam.DoFn):
 #         self.storage_client = storage.Client()
 #
 #     def process(self, file_name):
-#         bucket = self.storage_client.get_bucket('paramountpoc-exportjson')
+#         bucket = self.storage_client.get_bucket('poc-exportjson')
 #
 #         for i in file_name[1:]:
 #
@@ -167,9 +167,9 @@ class docai(beam.DoFn):
         location = 'us'
         processor_id = '73efe0a727c607ea'
 
-        gcs_output_bucket = 'gs://paramountpoc-exportjson'
+        gcs_output_bucket = 'gs://poc-exportjson'
         gcs_output_uri_prefix= 'poc-testjsons'
-        #file_path = 'gs://pre-ptpdocmgmt-bucket/Single-test-new/Invoice_23273615_20220621.PDF'
+        #file_path = 'gs://pre-ptpdocmgmt-bucket/Single-test-new/data_23273615_20220621.PDF'
         #file_path = 'gs://pre-ptpdocmgmt-bucket/try_test1'
         #file_path = 'gs://temp/try_test
         input_mime_type = 'application/pdf'
@@ -274,7 +274,7 @@ class docai(beam.DoFn):
             # Get List of Document Objects from the Output Bucket
                 output_blobs = self.storage_client.list_blobs(output_bucket, prefix=output_prefix)
 
-#                 bucket = self.storage_client.get_bucket('paramountpoc-exportjson')
+#                 bucket = self.storage_client.get_bucket('poc-exportjson')
 
 #                 blob = bucket.get_blob(i)
 
@@ -285,7 +285,7 @@ class docai(beam.DoFn):
                     h.update(file_loc = blob.name)
                     source_bucket = self.storage_client.get_bucket("pre-ptpdocmgmt-bucket")
                     blob = source_bucket.get_blob(i)
-                    destination_bucket = self.storage_client.get_bucket("paramountpoc-processedpdf")
+                    destination_bucket = self.storage_client.get_bucket("poc-processedpdf")
                     #blob = bucket.blob("PO ,Vendor,Cost center and  WBS.csv")
                     #data = blob.download_as_bytes()
                     blob_copy = source_bucket.copy_blob(blob, destination_bucket, blob.name)
@@ -318,17 +318,17 @@ class jsontoxml2(beam.DoFn):
         import pytz
 
         print('****')
-        print(data['invoice_id'])
+        print(data['data_id'])
     #print(data)
 
-        bucket_name = 'paramount_poc_xml_files'
-        bucket = self.storage_client.get_bucket('paramount_poc_xml_files')
+        bucket_name = '_poc_xml_files'
+        bucket = self.storage_client.get_bucket('_poc_xml_files')
         blob = bucket.get_blob('sample.xml')
         xml_file = blob.download_as_string()
         aware_us_central = datetime.now(pytz.timezone('US/Central'))
         iso_date = aware_us_central.replace(microsecond=0).isoformat()
         date = str(datetime.now().date()).replace('-',"")
-        #fname = date + str(data['invoice_id']) + ".PDF"
+        #fname = date + str(data['data_id']) + ".PDF"
         fname = str((data['file_loc'].replace('.json','').split('/'))[-1]) + ".PDF" + date + str(datetime.now().time()).replace(':',"").split(".")[0]
 
         tree = ET.ElementTree(ET.fromstring(xml_file))
@@ -345,79 +345,79 @@ class jsontoxml2(beam.DoFn):
 
         for Header in root.iter('Correspondent'):
             contact = Header.find("Contact")
-            contact.set('addressID',"")                 # address id of the billed from company
+            contact.set('addressID',"")                 # address id of the billed from institute
             for name in Header.iter('Name'):
-                name.text = data['supplier_name']                            # Name of the billed from company
+                name.text = data['seller_name']                            # Name of the billed from institute
 
-      #invoice details
-        for Invdet in root.iter('InvoiceDetailRequestHeader'):
-            Invdet.set('invoiceID',data['invoice_id'])
-            Invdet.set('invoiceDate',data['invoice_date'] + "T00:00:00-06:00")
+      #data details
+        for Invdet in root.iter('dataDetailRequestHeader'):
+            Invdet.set('dataID',data['data_id'])
+            Invdet.set('dataDate',data['data_date'] + "T00:00:00-06:00")
 
     #billed to details
 
-        for invoicepartner in root.iter('InvoiceDetailRequestHeader'):
-            s = invoicepartner.findall('InvoicePartner')
+        for datapartner in root.iter('dataDetailRequestHeader'):
+            s = datapartner.findall('dataPartner')
 
       #billed to details
             billto = s[0]
             contact = billto.find("Contact")
-            contact.set('addressID',data['companyCode'])                 # address id of the billed to company
+            contact.set('addressID',data['instituteCode'])                 # address id of the billed to institute
             for name in billto.iter('Name'):
-                name.text = data['receiver_name']                            # Name of the billed to company
+                name.text = data['buyer_name']                            # Name of the billed to institute
             address = contact.find('PostalAddress')
             street = address.find('Street')
-            street.text = data['receiver_street']                            # street of billed to company
+            street.text = data['buyer_street']                            # street of billed to institute
             city = address.find('City')
-            city.text = data['receiver_city']                              # city of billed to company
+            city.text = data['buyer_city']                              # city of billed to institute
             state = address.find('State')
-            state.text = data['reciever_state']                             # state of billed to company
+            state.text = data['buyer_state']                             # state of billed to institute
             pcode = address.find('PostalCode')
-            pcode.text = data['receiver_pincode']                             # postal code of billed to company
+            pcode.text = data['buyer_pincode']                             # postal code of billed to institute
             country = address.find('Country')
-            country.text = data['receiver_country']                           # country of billed to company
-            country.set('isoCountryCode', "US" )            # data['receiver_country'] country code of billed to company
+            country.text = data['buyer_country']                           # country of billed to institute
+            country.set('isoCountryCode', "US" )            # data['buyer_country'] country code of billed to institute
 
       #remitted to details
             remitto = s[1]
             contact = remitto.find("Contact")
-            contact.set('addressID',str(data['vendorID']+":"+data['vendorID']))                 # address id of the remitted to company
+            contact.set('addressID',str(data['vendorID']+":"+data['vendorID']))                 # address id of the remitted to institute
             for name in remitto.iter('Name'):
-                name.text = data['supplier_name']                            # Name of the remitted to company
+                name.text = data['seller_name']                            # Name of the remitted to institute
             address = contact.find('PostalAddress')
             street = address.find('Street')
-            street.text = data['supplier_street']                            # street of remitted to company
+            street.text = data['seller_street']                            # street of remitted to institute
             city = address.find('City')
-            city.text = data['supplier_city']                              #city of remitted to company
+            city.text = data['seller_city']                              #city of remitted to institute
             state = address.find('State')
-            state.text = data['supplier_state']                             # state of remitted to company
+            state.text = data['seller_state']                             # state of remitted to institute
             pcode = address.find('PostalCode')
-            pcode.text = data['supplier_postalcode']                             # postal code of remitted to company
+            pcode.text = data['seller_postalcode']                             # postal code of remitted to institute
             country = address.find('Country')
-            country.text = data['supplier_country']                           # country of remitted to company
-            country.set('isoCountryCode',"US")            #data['supplier_country'] country code of remitted to company
+            country.text = data['seller_country']                           # country of remitted to institute
+            country.set('isoCountryCode',"US")            #data['seller_country'] country code of remitted to institute
 
       #sold to details
 
             soldto = s[2]
             contact = soldto.find("Contact")
-            contact.set('addressID',"")                 # address id of the sold to company
+            contact.set('addressID',"")                 # address id of the sold to institute
             for name in soldto.iter('Name'):
-                name.text = ""                            # Name of the sold to company
+                name.text = ""                            # Name of the sold to institute
             address = contact.find('PostalAddress')
             street = address.find('Street')
-            street.text = ""                            # street of sold to company
+            street.text = ""                            # street of sold to institute
             city = address.find('City')
-            city.text = ""                              # city of sold to company
+            city.text = ""                              # city of sold to institute
             state = address.find('State')
-            state.text = ""                             # state of sold to company
+            state.text = ""                             # state of sold to institute
             pcode = address.find('PostalCode')
-            pcode.text = ""                             # postal code of sold to company
+            pcode.text = ""                             # postal code of sold to institute
             country = address.find('Country')
-            country.text = ""                           # country of sold to company
-            country.set('isoCountryCode',"")            # country code of sold to company
+            country.text = ""                           # country of sold to institute
+            country.set('isoCountryCode',"")            # country code of sold to institute
             Email = contact.find("Email")
-            Email.text = data['supplier_email']
+            Email.text = data['seller_email']
 
         for filename in root.iter('URL'):
             filename.text = "cid:" + str((data['file_loc'].replace('.json','').split('/'))[-1]) + ".PDF@Attachment"                  # Name of the file  ####
@@ -427,8 +427,8 @@ class jsontoxml2(beam.DoFn):
             Orddet.set('orderDate','')  #purchase order date
             Orddet.set('orderID',data['purchase_order'])  #purchase order id
 
-        for temp in root.iter('InvoiceDetailItem'):
-            temp.set('invoiceLineNumber',data['line_item/unit'][0])           #item number
+        for temp in root.iter('dataDetailItem'):
+            temp.set('dataLineNumber',data['line_item/unit'][0])           #item number
             temp.set('quantity',"")
             if(len(data['line_item/quantity'])>=1):
                 temp.set('quantity',data['line_item/quantity'][0])
@@ -439,11 +439,11 @@ class jsontoxml2(beam.DoFn):
             Amtdet.text = data['line_item/amount'][0]                   #temp_f['line_item/amount'] #unit price of item
             Amtdet.set('currency',data['currency'])
             temp3 = temp.find('NetAmount')
-            IdIRtag = temp.find('InvoiceDetailItemReference')
+            IdIRtag = temp.find('dataDetailItemReference')
             #IdIRtag.set('lineNumber',data['line_item/unit'][0] )
             # ET.SubElement(IdIRtag,'ItemID')
             item = IdIRtag.find('ItemID')
-            # ET.SubElement(item,'SupplierPartID')
+            # ET.SubElement(item,'sellerPartID')
             # ET.SubElement(IdIRtag,'Description', lang="en-US")
             itemDesc = IdIRtag.find('Description')
             itemDesc.text = ""
@@ -455,33 +455,33 @@ class jsontoxml2(beam.DoFn):
             netAmtdet.set('currency',data['currency'])
 
 
-        for itdet in root.iter('InvoiceDetailOrder'):
+        for itdet in root.iter('dataDetailOrder'):
 
             print('*')
-        # idoitag = ET.SubElement(temp,'InvoiceDetailOrderInfo')
+        # idoitag = ET.SubElement(temp,'dataDetailOrderInfo')
         # oiitag = ET.SubElement(temp,'OrderIDInfo',orderDate="", orderID="")
 
             for j in range(1,len(data['line_item/unit'])): #len(data['line_item/unit'])
                 #print("len(data['line_item/unit']",j)
                 if(len(data['line_item/quantity'])>1):
-                    iditag = ET.SubElement(itdet,'InvoiceDetailItem', invoiceLineNumber=data['line_item/unit'][j], quantity=data['line_item/quantity'][j])
+                    iditag = ET.SubElement(itdet,'dataDetailItem', dataLineNumber=data['line_item/unit'][j], quantity=data['line_item/quantity'][j])
                 else:
-                    iditag = ET.SubElement(itdet,'InvoiceDetailItem', invoiceLineNumber=data['line_item/unit'][j], quantity="")
+                    iditag = ET.SubElement(itdet,'dataDetailItem', dataLineNumber=data['line_item/unit'][j], quantity="")
 
                 UnitOfMeasure = ET.SubElement(iditag,'UnitOfMeasure')
                 UnitOfMeasure.text = ""
-                iditag1 = itdet.findall('InvoiceDetailItem')
+                iditag1 = itdet.findall('dataDetailItem')
                 iditag = iditag1[len(iditag1)-1]
                 ET.SubElement(iditag,'UnitPrice')
                 UnitPrice = iditag.find('UnitPrice')
                 ET.SubElement(UnitPrice,'Money', currency=data['currency'])
                 UnitPriceAmount = UnitPrice.find('Money')
                 UnitPriceAmount.text = data['line_item/amount'][j]
-                ET.SubElement(iditag,'InvoiceDetailItemReference', lineNumber=data['line_item/unit'][j])
-                IdIRtag = iditag.find('InvoiceDetailItemReference')
+                ET.SubElement(iditag,'dataDetailItemReference', lineNumber=data['line_item/unit'][j])
+                IdIRtag = iditag.find('dataDetailItemReference')
                 ET.SubElement(IdIRtag,'ItemID')
                 item = IdIRtag.find('ItemID')
-                ET.SubElement(item,'SupplierPartID')
+                ET.SubElement(item,'sellerPartID')
                 ET.SubElement(IdIRtag,'Description', lang="en-US")
                 itemDesc = IdIRtag.find('Description')
                 itemDesc.text = ""
@@ -497,7 +497,7 @@ class jsontoxml2(beam.DoFn):
 
 
 
-        for temp in root.iter('InvoiceDetailSummary'):
+        for temp in root.iter('dataDetailSummary'):
             temp2 = temp.find('SubtotalAmount')
             invf = temp2.find('Money')
             invf.text = data['total_amount']   #temp_f['total_amount']      # Subtotal amount
@@ -538,9 +538,9 @@ class jsontoxml2(beam.DoFn):
         blob = bucket.blob((data['file_loc'].replace('.json','').split('/'))[-1]+".xml")
         blob.upload_from_string(ET.tostring(root, encoding='UTF-8',xml_declaration=True, method='xml').decode('UTF-8'),content_type='application/xml')
 
-        source_bucket = self.storage_client.get_bucket("paramountpoc-exportjson")
+        source_bucket = self.storage_client.get_bucket("poc-exportjson")
         blob = source_bucket.get_blob(data['file_loc'])
-        destination_bucket = self.storage_client.get_bucket("paramountpoc-processedjson")
+        destination_bucket = self.storage_client.get_bucket("poc-processedjson")
         #blob = bucket.blob("PO ,Vendor,Cost center and  WBS.csv")
         #data = blob.download_as_bytes()
         blob_copy = source_bucket.copy_blob(blob, destination_bucket, blob.name)
@@ -569,29 +569,29 @@ class jsontodic(beam.DoFn):
         import pytz
         from datetime import datetime as dt
 
-        bucket = self.storage_client.bucket("paramount_poc_sap_data")
+        bucket = self.storage_client.bucket("_poc_sap_data")
         blob = bucket.blob("PO ,Vendor,Cost center and  WBS.csv")
         data = blob.download_as_bytes()
         df = pandas.read_csv(io.BytesIO(data))
 
 
         vendorID_dic = dict(zip(df['Purchasing Document'], df.Vendor))
-        #companyCode_df = gcp_csv_to_df(self.storage_client,"paramount_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
-        companyCode_dic = dict(zip(df['Purchasing Document'], df['Compnay code']))
+        #instituteCode_df = gcp_csv_to_df(self.storage_client,"_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
+        instituteCode_dic = dict(zip(df['Purchasing Document'], df['Compnay code']))
         keys_values = vendorID_dic.items()
         vendorID_dic = {str(key): str(value) for key, value in keys_values}
-        keys_values = companyCode_dic.items()
-        companyCode_dic = {str(key): str(value) for key, value in keys_values}
+        keys_values = instituteCode_dic.items()
+        instituteCode_dic = {str(key): str(value) for key, value in keys_values}
 
 
 
 
-        temp_f={'file_loc': "",'companyCode':"" , 'supplier_name':"", 'supplier_street':"", 'invoice_id':"", 'supplier_postalcode':"","vendorID":"", 'supplier_country':"", 'supplier_city':"", 'supplier_state':"", 'invoice_date':"", 'supplier_email':"", 'receiver_name':"", 'receiver_street':"", 'receiver_city':"", 'reciever_state':"", 'receiver_pincode':"", 'receiver_country':"", 'due_date':"", 'purchase_order':"", 'currency':"", 'line_item/unit':[], 'line_item/amount':[], 'line_item/description':[],'line_item/quantity':[],'line_item/unit_price':[], 'total_amount':""}
+        temp_f={'file_loc': "",'instituteCode':"" , 'seller_name':"", 'seller_street':"", 'data_id':"", 'seller_postalcode':"","vendorID":"", 'seller_country':"", 'seller_city':"", 'seller_state':"", 'data_date':"", 'seller_email':"", 'buyer_name':"", 'buyer_street':"", 'buyer_city':"", 'buyer_state':"", 'buyer_pincode':"", 'buyer_country':"", 'due_date':"", 'purchase_order':"", 'currency':"", 'line_item/unit':[], 'line_item/amount':[], 'line_item/description':[],'line_item/quantity':[],'line_item/unit_price':[], 'total_amount':""}
 
         temp_f['file_loc'] = d['file_loc']
 
         for i in d['entities']:
-            if(i['type'] == 'invoice_date'):
+            if(i['type'] == 'data_date'):
                 if('mentionText' in i):
                     dateobject = datetime.strptime(i['mentionText'], '%b/%d/%Y').date()
                     d = dateobject.strftime('%Y-%m-%d')
@@ -608,11 +608,11 @@ class jsontodic(beam.DoFn):
 
 
         if(temp_f['purchase_order'] in vendorID_dic):
-            print("hit on vendorid for" + temp_f["invoice_id"])
+            print("hit on vendorid for" + temp_f["data_id"])
             temp_f['vendorID'] = vendorID_dic[temp_f['purchase_order']]
-        if(temp_f['purchase_order'] in companyCode_dic):
-            print("hit on companycode for" + temp_f["invoice_id"])
-            temp_f['companyCode'] = companyCode_dic[temp_f['purchase_order']]
+        if(temp_f['purchase_order'] in instituteCode_dic):
+            print("hit on institutecode for" + temp_f["data_id"])
+            temp_f['instituteCode'] = instituteCode_dic[temp_f['purchase_order']]
 
         yield temp_f
 
@@ -632,7 +632,7 @@ options.view_as(GoogleCloudOptions).region = 'us-central1'
 
 # Choose a Cloud Storage location.
 
-dataflow_gcs_location = 'gs://dataflow-job-paramount'
+dataflow_gcs_location = 'gs://dataflow-job-'
 options.view_as(GoogleCloudOptions).staging_location = '%s/staging' % dataflow_gcs_location
 options.view_as(GoogleCloudOptions).temp_location = '%s/temp' % dataflow_gcs_location
 
@@ -687,7 +687,7 @@ runner.run_pipeline(p1, options=options)
 # In[9]:
 
 
-# df2 = gcp_csv_to_df("paramount_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
+# df2 = gcp_csv_to_df("_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
 
 
 # In[ ]:
@@ -705,20 +705,20 @@ runner.run_pipeline(p1, options=options)
 # In[15]:
 
 
-# vendorID_df = gcp_csv_to_df("paramount_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
+# vendorID_df = gcp_csv_to_df("_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
 # vendorID_dic = dict(zip(vendorID_df['Purchasing Document'], vendorID_df.Vendor))
-# companyCode_df = gcp_csv_to_df("paramount_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
-# companyCode_dic = dict(zip(companyCode_df['Purchasing Document'], companyCode_df['Compnay code']))
+# instituteCode_df = gcp_csv_to_df("_poc_sap_data","PO ,Vendor,Cost center and  WBS.csv")
+# instituteCode_dic = dict(zip(instituteCode_df['Purchasing Document'], instituteCode_df['Compnay code']))
 # keys_values = vendorID_dic.items()
 # vendorID_dic = {str(key): str(value) for key, value in keys_values}
-# keys_values = companyCode_dic.items()
-# companyCode_dic = {str(key): str(value) for key, value in keys_values}
+# keys_values = instituteCode_dic.items()
+# instituteCode_dic = {str(key): str(value) for key, value in keys_values}
 
 
 # In[28]:
 
 
-# companyCode_dic
+# instituteCode_dic
 
 
 # In[ ]:
